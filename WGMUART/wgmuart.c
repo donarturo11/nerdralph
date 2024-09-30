@@ -23,10 +23,9 @@ __attribute(( section(".noinit") )) uint8_t wgm_txdata;
 __attribute(( section(".noinit") )) uint8_t wgm_rxdata0;
 __attribute(( section(".noinit") )) uint8_t wgm_rxdata1;
 
-const int LED = 4;
+
 
 #define DIVIDE_ROUNDED(NUMBER, DIVISOR) ((((2*(NUMBER))/(DIVISOR))+1)/2)
-#define PRESCALER 8L
 #define TICKS_PER_BIT DIVIDE_ROUNDED(F_CPU, PRESCALER * BAUD_RATE)
 
 #if (TICKS_PER_BIT > 171)
@@ -67,12 +66,12 @@ ISR(PCINT0_vect, ISR_NAKED)
 }
 
 // returns true when there is data to read
-uint8_t rx_data_ready()
+uint8_t WGMUART_data_ready()
 {
     return (WGMRXPORT & 1<<WGMRXBIT);
 }
 
-uint8_t rx_read()
+uint8_t WGMUART_getch()
 {
     uint8_t data = wgm_rxdata1;
     WGMRXPORT &= ~(1<<WGMRXBIT);        // clear rxdata1 full flag
@@ -89,7 +88,7 @@ uint8_t rx_read()
     return data;
 }
 
-void UARTsetup() {
+void WGMUART_init() {
     asm(".global TICKS_PER_BIT");
     asm(".equiv TICKS_PER_BIT, %0" :: "M" (TICKS_PER_BIT) );
     // Tx setup
@@ -104,7 +103,7 @@ void UARTsetup() {
     sei();
 }
 
-void write(uint8_t c) {
+void WGMUART_putch(uint8_t c) {
     while (TIMSK & 1<<OCIE0A);         // wait for last tx to finish
     // OC0A still running in SET_ON_MATCH mode during idle
     // stop bit time is finished if OCF0A set
@@ -129,30 +128,8 @@ void write(uint8_t c) {
 
 void prints_P(const __flash char* s)
 {
-    while (*s) write(*s++);
+    while (*s) WGMUART_putch(*s++);
 }
 
-void main() {
-    UARTsetup();
-    DDRB |= 1<<LED;
-    prints_P(PSTR("\nwgmUART echo\n"));
-    const unsigned ovf_per_sec = F_CPU / PRESCALER / 256;
-    unsigned overflows = 0;
-    while (1) {
-        if ( rx_data_ready() ) {
-            //_delay_ms(500);             // for rx FIFO testing
-            write( rx_read() ); 
-        }
-        if (TIFR & 1<<TOV0) {
-            TIFR = 1<<TOV0;             // clear overflow flag
-            overflows++;
-        }
-        // write a dot and toggle LED every second
-        if ( overflows == (ovf_per_sec) ) {
-            overflows = 0;
-            write('.');
-            PINB |= 1<<LED;
-        }
-    }
-}
+
 

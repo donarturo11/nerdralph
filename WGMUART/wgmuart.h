@@ -1,4 +1,9 @@
+#ifndef WGMUART_H
+#define WGMUART_H
+
+#ifndef BAUD_RATE
 #define BAUD_RATE 57600
+#endif
 
 /* GPIO for receive */
 #define WGMRXBIT    1
@@ -21,4 +26,16 @@
 #define TIMSK TIMSK0
 #define TIFR TIFR0
 #endif
+#ifndef PRESCALER
+#define PRESCALER 8L
+#endif
+#ifndef __ASSEMBLER__
+void WGMUART_init();
+void WGMUART_putch(uint8_t c);
+void prints_P(const __flash char* s);
+uint8_t WGMUART_getch();
+// returns true when there is data to read
+uint8_t WGMUART_data_ready();
+#endif // __ASSEMBLER__
+#endif // WGMUART_H
 
